@@ -44,6 +44,27 @@ Screenshots are written under `build/objekts/screenshots` by default. A custom
 directory can be passed with `outputDirectory`. Explicit duplicate filenames
 fail unless `overwrite: true` is used.
 
+## Render text in screenshots
+
+Flutter widget tests use a block-style fallback font unless application fonts
+are loaded first. Add a `test/flutter_test_config.dart` file to the project
+that runs the screenshot tests:
+
+```dart
+import 'dart:async';
+
+import 'package:objekts/objekts.dart' as objekts;
+
+Future<void> testExecutable(FutureOr<void> Function() testMain) async {
+  await objekts.loadAppFonts();
+  await testMain();
+}
+```
+
+`loadAppFonts()` loads the bundled Roboto font and fonts registered in the
+application or its package dependencies through `pubspec.yaml`. It is safe to
+call more than once.
+
 ## Example app
 
 The repository includes a standalone Flutter app and screenshot test under

@@ -20,7 +20,14 @@ void main() {
     (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(body: ColoredBox(color: Colors.blue)),
+          home: Scaffold(
+            body: Stack(
+              children: <Widget>[
+                ColoredBox(color: Colors.blue),
+                Center(child: Text('Visible screenshot text')),
+              ],
+            ),
+          ),
         ),
       );
 

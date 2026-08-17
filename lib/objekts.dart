@@ -1,4 +1,5 @@
 export 'src/capture.dart' show screenshots;
+export 'src/font_loader.dart' show loadAppFonts;
 export 'src/models.dart';
 export 'src/test_widgets.dart'
     show ObjektsDeviceWidgetTesterCallback, testWidgets, testWidgetsForDevices;
