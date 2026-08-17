@@ -37,6 +37,26 @@ void main() {
         config.surfaceSize * config.device.pixelRatio,
       );
 
+      await tester.tap(find.byKey(const Key('activity-tab')));
+      await tester.pump();
+      final activity = await objekts.screenshots(
+        name: 'activity',
+        overwrite: true,
+      );
+      expect(activity.logicalSize, config.surfaceSize);
+      expect(find.text('Home screenshot captured'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('settings-tab')));
+      await tester.pump();
+      final settings = await objekts.screenshots(
+        name: 'settings',
+        overwrite: true,
+      );
+      expect(settings.logicalSize, config.surfaceSize);
+      expect(find.text('Include device frame'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('overview-tab')));
+      await tester.pump();
       await tester.tap(find.byKey(const Key('increment-button')));
       await tester.pump();
       await objekts.screenshots(name: 'incremented', overwrite: true);

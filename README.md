@@ -77,9 +77,9 @@ flutter test
 flutter run
 ```
 
-The test in `example/test/screenshot_test.dart` captures the app in portrait
-and landscape configurations. Artifacts are written to
-`example/build/objekts/screenshots`.
+The test in `example/test/screenshot_test.dart` navigates across three example
+screens and captures each one in portrait and landscape configurations.
+Artifacts are written to `example/build/objekts/screenshots`.
 
 The example also contains standard Android and iOS host projects under
 `example/android` and `example/ios`.

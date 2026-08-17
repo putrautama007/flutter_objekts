@@ -18,8 +18,14 @@ Use `flutter devices` to select a connected Android device or iOS simulator.
 flutter test
 ```
 
-The test captures portrait and landscape device variants. PNG artifacts are
+The test captures the Overview, Activity, Settings, and incremented Overview
+screens for both portrait and landscape device variants. PNG artifacts are
 written to `build/objekts/screenshots`.
+
+The multi-screen flow is implemented with several calls to
+`objekts.screenshots()` in one test: tap a navigation destination, pump the new
+state, and save a uniquely named capture such as `home.png`, `activity.png`,
+or `settings.png`.
 
 The full device frame is included because the test uses `isFrameVisible: true`
 and captures without a `Finder`:
