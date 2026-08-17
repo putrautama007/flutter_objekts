@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:device_frame/device_frame.dart';
 import 'package:flutter/material.dart';
@@ -188,4 +189,168 @@ void main() {
     devices: devices,
     outputDirectory: outputDirectory.path,
   );
+
+  objekts.testWidgets(
+    'matches a deterministic golden file',
+    (tester) async {
+      await tester.pumpWidget(
+        const ColoredBox(color: Colors.blue),
+      );
+
+      final objekts.ScreenshotResult result = await objekts.matchesGolden(
+        name: 'surface',
+        outputDirectory: outputDirectory.path,
+      );
+
+      expect(result.target, objekts.ObjektsScreenshotTarget.surface);
+      expect(result.logicalSize, const Size(800, 600));
+      expect(result.pixelSize, const Size(800, 600));
+    },
+    outputDirectory: outputDirectory.path,
+  );
+
+  objekts.testWidgets(
+    'matches a Finder target in a custom golden directory',
+    (tester) async {
+      final _RecordingGoldenComparator comparator =
+          _installRecordingGoldenComparator();
+      final Directory goldenDirectory = Directory(
+        p.join(outputDirectory.path, 'custom-goldens'),
+      );
+
+      await tester.pumpWidget(
+        const Center(
+          child: SizedBox(
+            key: Key('golden-target'),
+            width: 40,
+            height: 30,
+            child: ColoredBox(color: Colors.red),
+          ),
+        ),
+      );
+
+      final objekts.ScreenshotResult result = await objekts.matchesGolden(
+        name: 'focused',
+        finder: find.byKey(const Key('golden-target')),
+        goldenDirectory: goldenDirectory.path,
+        outputDirectory: outputDirectory.path,
+      );
+
+      expect(result.target, objekts.ObjektsScreenshotTarget.finder);
+      expect(result.logicalSize, const Size(40, 30));
+      expect(
+          comparator.comparedGolden,
+          Uri.file(p.join(
+            goldenDirectory.path,
+            'test',
+            'matches_a_Finder_target_in_a_custom_golden_directory',
+            'focused.png',
+          )));
+      expect(comparator.comparedBytes, isNotNull);
+    },
+    outputDirectory: outputDirectory.path,
+  );
+
+  objekts.testWidgetsForDevices(
+    'includes device context in a golden path',
+    (tester, config) async {
+      final _RecordingGoldenComparator comparator =
+          _installRecordingGoldenComparator();
+      final Directory goldenDirectory = Directory(
+        p.join(outputDirectory.path, 'device-goldens'),
+      );
+
+      await tester.pumpWidget(
+        objekts.deviceFrame(
+          config: config,
+          child: const ColoredBox(color: Colors.purple),
+        ),
+      );
+
+      await objekts.matchesGolden(
+        name: 'device',
+        goldenDirectory: goldenDirectory.path,
+        outputDirectory: outputDirectory.path,
+      );
+
+      expect(
+          comparator.comparedGolden,
+          Uri.file(p.join(
+            goldenDirectory.path,
+            'test',
+            'includes_device_context_in_a_golden_path',
+            'Golden-phone-portrait',
+            'device.png',
+          )));
+    },
+    devices: <objekts.ObjektsDeviceConfig>[
+      objekts.ObjektsDeviceConfig(
+        device: DeviceInfo.genericPhone(
+          platform: TargetPlatform.android,
+          id: 'golden-phone',
+          name: 'Golden phone',
+          screenSize: const Size(100, 200),
+          pixelRatio: 1,
+        ),
+      ),
+    ],
+    outputDirectory: outputDirectory.path,
+  );
+
+  objekts.testWidgets(
+    'propagates golden comparison failures',
+    (tester) async {
+      _installRecordingGoldenComparator(matches: false);
+      await tester.pumpWidget(
+        const ColoredBox(color: Colors.orange),
+      );
+
+      bool didThrow = false;
+      try {
+        await objekts.matchesGolden(
+          name: 'mismatch',
+          goldenDirectory: outputDirectory.path,
+          outputDirectory: outputDirectory.path,
+        );
+      } catch (_) {
+        didThrow = true;
+      }
+      expect(didThrow, isTrue);
+    },
+    outputDirectory: outputDirectory.path,
+  );
+}
+
+_RecordingGoldenComparator _installRecordingGoldenComparator({
+  bool matches = true,
+}) {
+  final _RecordingGoldenComparator comparator = _RecordingGoldenComparator(
+    matches: matches,
+  );
+  final GoldenFileComparator previousComparator = goldenFileComparator;
+  final bool previousUpdateMode = autoUpdateGoldenFiles;
+  goldenFileComparator = comparator;
+  addTearDown(() {
+    expect(autoUpdateGoldenFiles, previousUpdateMode);
+    goldenFileComparator = previousComparator;
+  });
+  return comparator;
+}
+
+class _RecordingGoldenComparator extends GoldenFileComparator {
+  _RecordingGoldenComparator({required this.matches});
+
+  final bool matches;
+  Uri? comparedGolden;
+  Uint8List? comparedBytes;
+
+  @override
+  Future<bool> compare(Uint8List imageBytes, Uri golden) async {
+    comparedBytes = imageBytes;
+    comparedGolden = golden;
+    return matches;
+  }
+
+  @override
+  Future<void> update(Uri golden, Uint8List imageBytes) async {}
 }

@@ -44,6 +44,37 @@ Screenshots are written under `build/objekts/screenshots` by default. A custom
 directory can be passed with `outputDirectory`. Explicit duplicate filenames
 fail unless `overwrite: true` is used.
 
+## Golden file testing
+
+Use `matchesGolden` to compare the captured surface or one Finder-selected
+widget with a checked-in PNG:
+
+```dart
+objekts.testWidgets(
+  'renders home',
+  (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: Text('Hello')),
+      ),
+    );
+
+    await objekts.matchesGolden(name: 'home');
+  },
+);
+```
+
+Golden files are stored under `goldens/test/<test-description>/` by default.
+Device-configured tests add their device label to the path. Pass
+`goldenDirectory` to use a different baseline root. Golden comparisons use
+Flutter's exact pixel comparator, including its standard failure diff output.
+
+Create or update baselines with:
+
+```bash
+flutter test --update-goldens
+```
+
 ## Render text in screenshots
 
 Flutter widget tests use a block-style fallback font unless application fonts
@@ -199,5 +230,5 @@ flutter analyze
 flutter test
 ```
 
-HTML reports, screenshot indexes, golden comparisons, web file output, and
-pub.dev publication are intentionally outside the v1 scope.
+HTML reports, screenshot indexes, web file output, and pub.dev publication are
+intentionally outside the v1 scope.

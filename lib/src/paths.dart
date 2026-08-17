@@ -91,3 +91,33 @@ File nextArtifactFile({
   }
   return candidate;
 }
+
+String resolveGoldenFilePath({
+  required CaptureContext? context,
+  required String name,
+  String? goldenDirectory,
+}) {
+  final String root = _goldenRootDirectory(goldenDirectory);
+  final List<String> segments = <String>[
+    root,
+    'test',
+    sanitizePathSegment(context?.description ?? 'unscoped-test'),
+  ];
+  final ObjektsDeviceConfig? device = context?.deviceConfig;
+  if (device != null) {
+    final String label = context?.deviceLabel ??
+        '${device.deviceName}-${_orientationName(device)}';
+    segments.add(sanitizePathSegment(label));
+  }
+  return p.joinAll(<String>[...segments, '${_fileStem(name)}.png']);
+}
+
+String _goldenRootDirectory(String? configured) {
+  if (configured != null && p.isAbsolute(configured)) {
+    return p.normalize(configured);
+  }
+  if (configured != null) {
+    return p.normalize(p.join(Directory.current.path, configured));
+  }
+  return p.join(Directory.current.path, 'goldens');
+}
