@@ -15,6 +15,10 @@ ROOT = Path(__file__).resolve().parent.parent
 VERSION_RE = re.compile(r"^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)$")
 TAG_RE = re.compile(r"^v(?P<version>\d+\.\d+\.\d+)$")
 VERSION_LINE_RE = re.compile(r"(?m)^(version:\s*)([^\s#]+)(\s*)$")
+README_INSTALL_RE = re.compile(
+    r"(?ms)^(?P<prefix>\s+url:\s+https://github\.com/putrautama007/flutter_objekts\.git\s*\n\s+ref:\s+)"
+    r"(?P<tag>v\d+\.\d+\.\d+)(?P<suffix>\s*)$"
+)
 SECTION_RE = re.compile(r"(?m)^##\s+(.+?)\s*$")
 RELEASE_COMMIT_RE = re.compile(r"^chore\(release\):\s+v\d+\.\d+\.\d+$")
 
@@ -91,6 +95,28 @@ def replace_package_version(pubspec: str, version: Version) -> str:
     if count != 1:
         raise ReleaseError("could not update the version in pubspec.yaml")
     return updated
+
+
+def read_readme_install_tag(readme: str) -> str:
+    matches = list(README_INSTALL_RE.finditer(readme))
+    if len(matches) != 1:
+        raise ReleaseError(
+            "README.md must contain exactly one GitHub install dependency block"
+        )
+    return matches[0].group("tag")
+
+
+def replace_readme_install_tag(readme: str, tag: str) -> str:
+    matches = list(README_INSTALL_RE.finditer(readme))
+    if len(matches) != 1:
+        raise ReleaseError(
+            "README.md must contain exactly one GitHub install dependency block"
+        )
+    return README_INSTALL_RE.sub(
+        lambda match: f"{match.group('prefix')}{tag}{match.group('suffix')}",
+        readme,
+        count=1,
+    )
 
 
 def parse_changelog(changelog: str) -> tuple[str, list[tuple[str, str]]]:
@@ -190,9 +216,12 @@ def render_changelog(
 def prepare_release(repo: Path, notes_path: Path) -> ReleaseResult:
     pubspec_path = repo / "pubspec.yaml"
     changelog_path = repo / "CHANGELOG.md"
+    readme_path = repo / "README.md"
     pubspec = pubspec_path.read_text(encoding="utf-8")
     changelog = changelog_path.read_text(encoding="utf-8")
+    readme = readme_path.read_text(encoding="utf-8")
     package_version = read_package_version(pubspec)
+    readme_tag = read_readme_install_tag(readme)
     previous = latest_tag(repo)
     head = run_git(repo, "rev-parse", "HEAD")
 
@@ -200,6 +229,10 @@ def prepare_release(repo: Path, notes_path: Path) -> ReleaseResult:
         if package_version != previous[1]:
             raise ReleaseError(
                 "HEAD is tagged, but pubspec.yaml does not match the tagged version"
+            )
+        if readme_tag != previous[1].tag:
+            raise ReleaseError(
+                "HEAD is tagged, but README.md does not match the tagged version"
             )
         notes = release_notes_from_changelog(changelog, package_version)
         notes_path.write_text(notes, encoding="utf-8")
@@ -227,8 +260,10 @@ def prepare_release(repo: Path, notes_path: Path) -> ReleaseResult:
     updated_changelog = render_changelog(prefix, sections, version, release_body)
 
     updated_pubspec = replace_package_version(pubspec, version)
+    updated_readme = replace_readme_install_tag(readme, version.tag)
     pubspec_path.write_text(updated_pubspec, encoding="utf-8")
     changelog_path.write_text(updated_changelog, encoding="utf-8")
+    readme_path.write_text(updated_readme, encoding="utf-8")
     notes = f"## {version}\n\n{release_body}\n"
     notes_path.write_text(notes, encoding="utf-8")
     return ReleaseResult(version, tag, True, notes)

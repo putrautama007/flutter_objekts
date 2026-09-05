@@ -28,7 +28,21 @@ class ReleasePreparationTest(unittest.TestCase):
             "## 0.1.0\n\n"
             "- Initial release.\n",
         )
-        self.write("README.md", "initial\n")
+        self.write(
+            "README.md",
+            """# objekts
+
+## Install from GitHub
+
+```yaml
+dev_dependencies:
+  objekts:
+    git:
+      url: https://github.com/putrautama007/flutter_objekts.git
+      ref: v0.1.0
+```
+""",
+        )
         self.commit("initial commit")
 
     def tearDown(self) -> None:
@@ -66,7 +80,8 @@ class ReleasePreparationTest(unittest.TestCase):
 
     def test_increments_patch_and_generates_notes(self) -> None:
         self.run_git("tag", "-a", "v0.1.0", "-m", "Release v0.1.0")
-        self.write("README.md", "updated\n")
+        readme = (self.repo / "README.md").read_text().replace("# objekts", "# updated")
+        self.write("README.md", readme)
         self.commit("fix: make release notes deterministic")
 
         result = self.prepare()
@@ -75,6 +90,28 @@ class ReleasePreparationTest(unittest.TestCase):
         self.assertEqual(result.version.patch, 1)
         self.assertIn("- fix: make release notes deterministic", result.notes)
         self.assertIn("version: 0.1.1", (self.repo / "pubspec.yaml").read_text())
+        self.assertIn("ref: v0.1.1", (self.repo / "README.md").read_text())
+
+    def test_bootstrap_updates_readme_install_tag(self) -> None:
+        result = self.prepare()
+
+        self.assertEqual(result.tag, "v0.1.0")
+        self.assertIn("ref: v0.1.0", (self.repo / "README.md").read_text())
+
+    def test_rejects_missing_readme_install_block(self) -> None:
+        self.write("README.md", "# objekts\n")
+        self.commit("remove install instructions")
+
+        with self.assertRaisesRegex(ReleaseError, "exactly one GitHub install"):
+            self.prepare()
+
+    def test_rejects_duplicate_readme_install_blocks(self) -> None:
+        readme = (self.repo / "README.md").read_text()
+        self.write("README.md", f"{readme}\n{readme}")
+        self.commit("duplicate install instructions")
+
+        with self.assertRaisesRegex(ReleaseError, "exactly one GitHub install"):
+            self.prepare()
 
     def test_rejects_version_mismatch(self) -> None:
         self.run_git("tag", "-a", "v0.1.0", "-m", "Release v0.1.0")
@@ -106,6 +143,19 @@ class ReleasePreparationTest(unittest.TestCase):
             "pubspec.yaml",
             "name: objekts\nversion: 0.1.1\npublish_to: none\n",
         )
+        self.write(
+            "README.md",
+            """# objekts
+
+```yaml
+dev_dependencies:
+  objekts:
+    git:
+      url: https://github.com/putrautama007/flutter_objekts.git
+      ref: v0.1.1
+```
+""",
+        )
         self.commit("chore(release): v0.1.1")
         self.run_git("tag", "-a", "v0.1.1", "-m", "Release v0.1.1")
 
@@ -114,6 +164,28 @@ class ReleasePreparationTest(unittest.TestCase):
         self.assertFalse(result.changed)
         self.assertEqual(result.tag, "v0.1.1")
         self.assertIn("## 0.1.1", result.notes)
+        self.assertIn("ref: v0.1.1", (self.repo / "README.md").read_text())
+
+    def test_rejects_stale_readme_on_already_tagged_release(self) -> None:
+        self.run_git("tag", "-a", "v0.1.0", "-m", "Release v0.1.0")
+        self.write(
+            "pubspec.yaml",
+            "name: objekts\nversion: 0.1.1\npublish_to: none\n",
+        )
+        self.write(
+            "CHANGELOG.md",
+            "# Changelog\n\n"
+            "## Unreleased\n\n"
+            "## 0.1.0\n\n"
+            "- Initial release.\n\n"
+            "## 0.1.1\n\n"
+            "- Patch release.\n",
+        )
+        self.commit("chore(release): v0.1.1")
+        self.run_git("tag", "-a", "v0.1.1", "-m", "Release v0.1.1")
+
+        with self.assertRaisesRegex(ReleaseError, "README.md does not match"):
+            self.prepare()
 
 
 if __name__ == "__main__":
