@@ -16,7 +16,7 @@ dev_dependencies:
   objekts:
     git:
       url: https://github.com/putrautama007/flutter_objekts.git
-      ref: v0.1.2
+      ref: v0.1.3
 ```
 
 ## AI agent screenshot skill

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.1.3
+
+### Changes
+
+- Merge pull request #4 from putrautama007/codex/shareable-screenshot-skill
+
+- feat: add shareable Flutter screenshot skill
+
 ## 0.1.2
 
 ### Changes
