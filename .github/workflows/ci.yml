@@ -60,7 +60,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add pubspec.yaml CHANGELOG.md
+          git add pubspec.yaml CHANGELOG.md README.md
           git commit -m "chore(release): ${RELEASE_TAG}"
           git tag -a "${RELEASE_TAG}" -m "Release ${RELEASE_TAG}"
           git push --follow-tags origin HEAD:main
