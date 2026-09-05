@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.1.2
+
+### Changes
+
+- Merge pull request #3 from putrautama007/codex/sync-readme-release-version
+
+- chore(release): sync README install version
+
 ## 0.1.1
 
 ### Changes
