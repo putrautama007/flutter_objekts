@@ -1,0 +1,71 @@
+import 'package:device_frame/device_frame.dart';
+import 'package:flutter/material.dart';
+import 'package:objekts/objekts.dart' as objekts;
+
+final previewDevice = objekts.ObjektsDeviceConfig(
+  device: Devices.ios.iPhone13,
+  orientation: Orientation.portrait,
+);
+
+// Replace this deterministic demo with the screen and fakes under review.
+class PreviewFixture extends StatefulWidget {
+  const PreviewFixture({super.key});
+
+  @override
+  State<PreviewFixture> createState() => _PreviewFixtureState();
+}
+
+class _PreviewFixtureState extends State<PreviewFixture> {
+  int _saved = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        fontFamily: 'Roboto',
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff3155b5)),
+      ),
+      home: Scaffold(
+        backgroundColor: const Color(0xfff5f6fa),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 36),
+                const Text('MY COLLECTION',
+                    style: TextStyle(letterSpacing: 2, fontSize: 12)),
+                const SizedBox(height: 16),
+                const Text('A small moment,\nsaved.',
+                    style:
+                        TextStyle(fontSize: 34, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 28),
+                Container(
+                  height: 220,
+                  decoration: BoxDecoration(
+                    color: const Color(0xff3155b5),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: const Icon(Icons.bookmark_outline,
+                      size: 96, color: Colors.white),
+                ),
+                const SizedBox(height: 24),
+                Text('Saved items: $_saved',
+                    style: const TextStyle(fontSize: 20)),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  key: const Key('save-item'),
+                  onPressed: () => setState(() => _saved += 1),
+                  child: const Text('Save item'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

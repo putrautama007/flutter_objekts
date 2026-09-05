@@ -1,0 +1,10 @@
+import 'dart:async';
+
+import 'package:objekts/objekts.dart' as objekts;
+
+// Keep screenshot-only setup here. Compose required shared setup explicitly:
+// Flutter selects the closest config instead of merging parent configs.
+Future<void> testExecutable(FutureOr<void> Function() testMain) async {
+  await objekts.loadAppFonts();
+  await testMain();
+}
