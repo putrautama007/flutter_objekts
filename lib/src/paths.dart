@@ -44,8 +44,19 @@ Directory artifactDirectory({
   required CaptureContext? context,
   required String? outputDirectory,
 }) {
+  final List<String> segments = _contextPathSegments(
+    root: _rootDirectory(context, outputDirectory),
+    context: context,
+  );
+  return Directory(p.joinAll(segments));
+}
+
+List<String> _contextPathSegments({
+  required String root,
+  required CaptureContext? context,
+}) {
   final List<String> segments = <String>[
-    _rootDirectory(context, outputDirectory),
+    root,
     'test',
     sanitizePathSegment(context?.description ?? 'unscoped-test'),
   ];
@@ -55,7 +66,11 @@ Directory artifactDirectory({
         '${device.deviceName}-${_orientationName(device)}';
     segments.add(sanitizePathSegment(label));
   }
-  return Directory(p.joinAll(segments));
+  final String? variantLabel = context?.variantLabel;
+  if (variantLabel != null && variantLabel.isNotEmpty) {
+    segments.add(sanitizePathSegment(variantLabel, fallback: 'variant'));
+  }
+  return segments;
 }
 
 File nextArtifactFile({
@@ -64,6 +79,7 @@ File nextArtifactFile({
   required CaptureContext? context,
   required bool overwrite,
   required bool allowAutomaticCollision,
+  Set<String>? reservedPaths,
 }) {
   final bool isExplicit = name != null;
   final String stem = name == null
@@ -74,7 +90,11 @@ File nextArtifactFile({
   }
 
   File candidate = File(p.join(directory.path, '$stem.png'));
-  if (overwrite || !candidate.existsSync()) {
+  bool isAvailable(File file) =>
+      !file.existsSync() &&
+      !(reservedPaths?.contains(file.absolute.path) ?? false);
+
+  if (overwrite || isAvailable(candidate)) {
     return candidate;
   }
   if (isExplicit && !allowAutomaticCollision) {
@@ -85,7 +105,7 @@ File nextArtifactFile({
   }
 
   int suffix = 2;
-  while (candidate.existsSync()) {
+  while (!isAvailable(candidate)) {
     candidate = File(p.join(directory.path, '$stem-$suffix.png'));
     suffix += 1;
   }
@@ -98,17 +118,8 @@ String resolveGoldenFilePath({
   String? goldenDirectory,
 }) {
   final String root = _goldenRootDirectory(goldenDirectory);
-  final List<String> segments = <String>[
-    root,
-    'test',
-    sanitizePathSegment(context?.description ?? 'unscoped-test'),
-  ];
-  final ObjektsDeviceConfig? device = context?.deviceConfig;
-  if (device != null) {
-    final String label = context?.deviceLabel ??
-        '${device.deviceName}-${_orientationName(device)}';
-    segments.add(sanitizePathSegment(label));
-  }
+  final List<String> segments =
+      _contextPathSegments(root: root, context: context);
   return p.joinAll(<String>[...segments, '${_fileStem(name)}.png']);
 }
 

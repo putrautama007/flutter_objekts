@@ -44,6 +44,40 @@ Screenshots are written under `build/objekts/screenshots` by default. A custom
 directory can be passed with `outputDirectory`. Explicit duplicate filenames
 fail unless `overwrite: true` is used.
 
+## Capture many screens faster
+
+Use `runScreenshotBatch` when one widget test captures several screens. Each
+`batch.capture` call freezes the current rendered frame, then lets lossless PNG
+encoding and file output continue in bounded background workers while the test
+navigates to the next state:
+
+```dart
+final results = await objekts.runScreenshotBatch(
+  (batch) async {
+    await batch.capture(name: 'home');
+
+    await tester.tap(find.byKey(const Key('activity-tab')));
+    await tester.pump();
+    await batch.capture(name: 'activity');
+
+    await tester.tap(find.byKey(const Key('settings-tab')));
+    await tester.pump();
+    await batch.capture(name: 'settings');
+  },
+);
+
+print(results.map((result) => result.path));
+```
+
+The returned results preserve capture order, and all files are ready when
+`runScreenshotBatch` completes. Two captures may be pending by default. Set
+`maxPendingCaptures` to match the memory and CPU available on the test worker.
+A batch-level `pixelRatio` supplies a default that individual captures can
+override.
+
+The existing `screenshots()` function remains useful when the file must be
+available immediately after one capture.
+
 ## Golden file testing
 
 Use `matchesGolden` to compare the captured surface or one Finder-selected
@@ -74,6 +108,18 @@ Create or update baselines with:
 ```bash
 flutter test --update-goldens
 ```
+
+Golden comparisons can share the faster pipeline with normal artifacts:
+
+```dart
+await objekts.runScreenshotBatch((batch) async {
+  await batch.capture(name: 'review-artifact');
+  await batch.matchGolden(name: 'review-baseline');
+});
+```
+
+All PNG work finishes first, then golden comparisons run in declaration order
+using Flutter's configured comparator.
 
 ## Render text in screenshots
 
@@ -108,8 +154,8 @@ flutter test
 flutter run
 ```
 
-The test in `example/test/screenshot_test.dart` navigates across three example
-screens and captures each one in portrait and landscape configurations.
+The test in `example/test/screenshot_test.dart` captures four example states
+in portrait and landscape configurations.
 Artifacts are written to `example/build/objekts/screenshots`.
 
 The example also contains standard Android and iOS host projects under
@@ -188,6 +234,43 @@ objekts.testWidgetsForDevices(
 Each device gets its own artifact directory and failure screenshot. Duplicate
 device labels receive deterministic numeric suffixes.
 
+## Device and visual variant matrices
+
+The standard Flutter `TestVariant` parameter composes with device variants.
+For example, this registers a device × theme matrix while keeping every case
+as an independently reported widget test:
+
+```dart
+final themes = ValueVariant<ThemeMode>(
+  <ThemeMode>{ThemeMode.light, ThemeMode.dark},
+);
+
+objekts.testWidgetsForDevices(
+  'renders the catalog matrix',
+  (tester, config) async {
+    await tester.pumpWidget(
+      objekts.deviceFrame(
+        config: config,
+        child: MaterialApp(
+          themeMode: themes.currentValue,
+          home: const CatalogScreen(),
+        ),
+      ),
+    );
+
+    await objekts.runScreenshotBatch((batch) async {
+      await batch.capture(name: 'catalog');
+    });
+  },
+  devices: devices,
+  variant: themes,
+);
+```
+
+Artifacts are isolated under
+`<test>/<device>/<variant>/<capture>.png`. Tests without a Flutter variant keep
+the existing directory layout.
+
 ## Focused screenshots
 
 Pass a `Finder` to crop the image to exactly one renderable widget. Optional
@@ -228,6 +311,9 @@ cd example
 flutter pub get
 flutter analyze
 flutter test
+
+# Explicit performance gate (not part of the normal test suite)
+flutter test benchmark/screenshot_batch_benchmark_test.dart
 ```
 
 HTML reports, screenshot indexes, web file output, and pub.dev publication are

@@ -31,18 +31,27 @@ Future<ScreenshotResult> matchesGolden({
     settleTimeout: settleTimeout,
     overwrite: true,
   );
-  final File screenshotFile = File(result.path);
   final String goldenPath = resolveGoldenFilePath(
     context: currentCaptureContext,
     name: name,
     goldenDirectory: goldenDirectory,
   );
 
+  await compareScreenshotWithGolden(result, goldenPath);
+
+  return result;
+}
+
+Future<void> compareScreenshotWithGolden(
+  ScreenshotResult result,
+  String goldenPath,
+) async {
+  final File screenshotFile = File(result.path);
   final flutter_test.TestWidgetsFlutterBinding binding =
       flutter_test.TestWidgetsFlutterBinding.ensureInitialized();
   await binding.runAsync<void>(() async {
     await flutter_test.expectLater(
-      screenshotFile.readAsBytesSync(),
+      await screenshotFile.readAsBytes(),
       flutter_test.matchesGoldenFile(Uri.file(goldenPath)),
     );
   });
@@ -50,6 +59,4 @@ Future<ScreenshotResult> matchesGolden({
   if (asyncException != null) {
     Error.throwWithStackTrace(asyncException, StackTrace.current);
   }
-
-  return result;
 }

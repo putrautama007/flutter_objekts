@@ -10,6 +10,17 @@ import 'context.dart';
 import 'models.dart';
 import 'paths.dart';
 
+/// An immutable rendered frame awaiting encoding and persistence.
+///
+/// This type is package-internal and is intentionally not exported by
+/// `package:objekts/objekts.dart`.
+class CapturedFrame {
+  CapturedFrame({required this.image, required this.result});
+
+  final ui.Image image;
+  final ScreenshotResult result;
+}
+
 /// Captures the current Flutter test surface or one Finder-selected widget.
 Future<ScreenshotResult> screenshots({
   String? name,
@@ -21,7 +32,7 @@ Future<ScreenshotResult> screenshots({
   bool settle = false,
   Duration settleTimeout = const Duration(seconds: 5),
 }) async {
-  return _captureScreenshot(
+  return captureScreenshot(
     name: name,
     finder: finder,
     outputDirectory: outputDirectory,
@@ -37,14 +48,14 @@ Future<ScreenshotResult> screenshots({
 Future<ScreenshotResult> captureFailureScreenshot({
   String? outputDirectory,
 }) {
-  return _captureScreenshot(
+  return captureScreenshot(
     name: 'failure',
     outputDirectory: outputDirectory,
     allowAutomaticCollision: true,
   );
 }
 
-Future<ScreenshotResult> _captureScreenshot({
+Future<ScreenshotResult> captureScreenshot({
   String? name,
   flutter_test.Finder? finder,
   String? outputDirectory,
@@ -54,6 +65,32 @@ Future<ScreenshotResult> _captureScreenshot({
   bool settle = false,
   Duration settleTimeout = const Duration(seconds: 5),
   required bool allowAutomaticCollision,
+}) async {
+  final CapturedFrame frame = await captureFrame(
+    name: name,
+    finder: finder,
+    outputDirectory: outputDirectory,
+    pixelRatio: pixelRatio,
+    padding: padding,
+    overwrite: overwrite,
+    settle: settle,
+    settleTimeout: settleTimeout,
+    allowAutomaticCollision: allowAutomaticCollision,
+  );
+  return finalizeCapturedFrame(frame);
+}
+
+Future<CapturedFrame> captureFrame({
+  String? name,
+  flutter_test.Finder? finder,
+  String? outputDirectory,
+  double? pixelRatio,
+  double padding = 0,
+  bool overwrite = false,
+  bool settle = false,
+  Duration settleTimeout = const Duration(seconds: 5),
+  required bool allowAutomaticCollision,
+  Set<String>? reservedPaths,
 }) async {
   final flutter_test.TestWidgetsFlutterBinding binding =
       flutter_test.TestWidgetsFlutterBinding.ensureInitialized();
@@ -99,40 +136,6 @@ Future<ScreenshotResult> _captureScreenshot({
           'pixelRatio must be a finite value greater than zero.');
     }
 
-    final ByteData? byteData = await binding.runAsync<ByteData?>(() async {
-      final RenderObject? boundaryObject = finder == null
-          ? context?.surfaceBoundaryKey.currentContext?.findRenderObject()
-          : null;
-      final ui.Image image;
-      if (boundaryObject is RenderRepaintBoundary) {
-        image = await boundaryObject.toImage(pixelRatio: ratio);
-      } else {
-        image = await _captureLayerImage(
-          rootLayer: rootLayer,
-          bounds: captureBounds,
-          pixelRatio: ratio,
-          viewPixelRatio: renderView.flutterView.devicePixelRatio,
-        );
-      }
-      try {
-        return image.toByteData(format: ui.ImageByteFormat.png);
-      } finally {
-        image.dispose();
-      }
-    });
-    final Object? asyncException = binding.takeException();
-    if (asyncException != null) {
-      throw ObjektsCaptureException(
-        'Flutter failed while rasterizing the screenshot.',
-        cause: asyncException,
-      );
-    }
-    if (byteData == null) {
-      throw ObjektsCaptureException(
-        'Flutter could not encode the screenshot as PNG.',
-      );
-    }
-
     final Directory directory = artifactDirectory(
       context: context,
       outputDirectory: outputDirectory,
@@ -143,22 +146,57 @@ Future<ScreenshotResult> _captureScreenshot({
       context: context,
       overwrite: overwrite,
       allowAutomaticCollision: allowAutomaticCollision,
+      reservedPaths: reservedPaths,
     );
-    file.writeAsBytesSync(byteData.buffer.asUint8List());
+    final String reservedPath = file.absolute.path;
+    reservedPaths?.add(reservedPath);
 
-    return ScreenshotResult(
-      path: file.absolute.path,
-      target: finder == null
-          ? ObjektsScreenshotTarget.surface
-          : ObjektsScreenshotTarget.finder,
-      logicalSize: ui.Size(captureBounds.width, captureBounds.height),
-      pixelSize: ui.Size(
-        (captureBounds.width * ratio).ceilToDouble(),
-        (captureBounds.height * ratio).ceilToDouble(),
+    final ui.Image? image = await binding.runAsync<ui.Image>(() async {
+      final RenderObject? boundaryObject = finder == null
+          ? context?.surfaceBoundaryKey.currentContext?.findRenderObject()
+          : null;
+      if (boundaryObject is RenderRepaintBoundary) {
+        return boundaryObject.toImage(pixelRatio: ratio);
+      }
+      return _captureLayerImage(
+        rootLayer: rootLayer,
+        bounds: captureBounds,
+        pixelRatio: ratio,
+        viewPixelRatio: renderView.flutterView.devicePixelRatio,
+      );
+    });
+    final Object? asyncException = binding.takeException();
+    if (asyncException != null) {
+      image?.dispose();
+      reservedPaths?.remove(reservedPath);
+      throw ObjektsCaptureException(
+        'Flutter failed while rasterizing the screenshot.',
+        cause: asyncException,
+      );
+    }
+    if (image == null) {
+      reservedPaths?.remove(reservedPath);
+      throw ObjektsCaptureException(
+        'Flutter could not rasterize the screenshot.',
+      );
+    }
+
+    return CapturedFrame(
+      image: image,
+      result: ScreenshotResult(
+        path: reservedPath,
+        target: finder == null
+            ? ObjektsScreenshotTarget.surface
+            : ObjektsScreenshotTarget.finder,
+        logicalSize: ui.Size(captureBounds.width, captureBounds.height),
+        pixelSize: ui.Size(
+          (captureBounds.width * ratio).ceilToDouble(),
+          (captureBounds.height * ratio).ceilToDouble(),
+        ),
+        pixelRatio: ratio,
+        deviceIdentifier: context?.deviceConfig?.deviceIdentifier,
+        orientation: context?.deviceConfig?.orientation,
       ),
-      pixelRatio: ratio,
-      deviceIdentifier: context?.deviceConfig?.deviceIdentifier,
-      orientation: context?.deviceConfig?.orientation,
     );
   } on ObjektsCaptureException {
     rethrow;
@@ -168,6 +206,51 @@ Future<ScreenshotResult> _captureScreenshot({
       cause: error,
       stackTrace: stackTrace,
     );
+  }
+}
+
+Future<ScreenshotResult> finalizeCapturedFrame(CapturedFrame frame) async {
+  final flutter_test.TestWidgetsFlutterBinding binding =
+      flutter_test.TestWidgetsFlutterBinding.ensureInitialized();
+  try {
+    final bool? didWrite = await binding.runAsync<bool>(() async {
+      final ByteData? byteData =
+          await frame.image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        throw ObjektsCaptureException(
+          'Flutter could not encode the screenshot as PNG.',
+        );
+      }
+      final Uint8List bytes = byteData.buffer.asUint8List(
+        byteData.offsetInBytes,
+        byteData.lengthInBytes,
+      );
+      await File(frame.result.path).writeAsBytes(bytes, flush: false);
+      return true;
+    });
+    final Object? asyncException = binding.takeException();
+    if (asyncException != null) {
+      throw ObjektsCaptureException(
+        'Flutter failed while encoding or writing the screenshot.',
+        cause: asyncException,
+      );
+    }
+    if (didWrite != true) {
+      throw ObjektsCaptureException(
+        'Flutter could not encode or write the screenshot.',
+      );
+    }
+    return frame.result;
+  } on ObjektsCaptureException {
+    rethrow;
+  } on Object catch (error, stackTrace) {
+    throw ObjektsCaptureException(
+      'Unable to write the screenshot.',
+      cause: error,
+      stackTrace: stackTrace,
+    );
+  } finally {
+    frame.image.dispose();
   }
 }
 
