@@ -2,12 +2,20 @@
 
 ## Unreleased
 
+## 0.1.1
+
+### Changes
+
 - Added `runScreenshotBatch` with bounded background PNG encoding and ordered
   screenshot results for faster multi-screen widget tests.
 - Added batched golden comparisons while preserving the existing synchronous
   screenshot and golden interfaces.
 - Added collision-free device × Flutter variant artifact directories.
 - Added a repeatable two-device, four-screen performance benchmark.
+
+- Merge pull request #2 from putrautama007/codex/faster-batched-screenshots
+
+- feat: add faster batched screenshot processing
 
 ## 0.1.0
 

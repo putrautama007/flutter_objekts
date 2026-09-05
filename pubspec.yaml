@@ -1,6 +1,6 @@
 name: objekts
 description: Capture deterministic Flutter widget-test screenshots, including device-framed and failure artifacts.
-version: 0.1.0
+version: 0.1.1
 publish_to: none
 repository: https://github.com/putrautama007/flutter_objekts
 issue_tracker: https://github.com/putrautama007/flutter_objekts/issues
