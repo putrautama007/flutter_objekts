@@ -11,12 +11,14 @@ class CaptureContext {
     required this.description,
     this.deviceConfig,
     this.deviceLabel,
+    this.variantLabel,
     this.outputDirectory,
   });
 
   final String description;
   final ObjektsDeviceConfig? deviceConfig;
   final String? deviceLabel;
+  final String? variantLabel;
   final String? outputDirectory;
   final widgets.GlobalKey surfaceBoundaryKey = widgets.GlobalKey();
   int generatedCaptureCount = 0;

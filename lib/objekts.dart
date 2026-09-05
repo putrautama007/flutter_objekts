@@ -1,3 +1,4 @@
+export 'src/batch.dart' show ScreenshotBatch, runScreenshotBatch;
 export 'src/capture.dart' show screenshots;
 export 'src/font_loader.dart' show loadAppFonts;
 export 'src/golden.dart' show matchesGolden;

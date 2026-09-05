@@ -27,41 +27,40 @@ void main() {
         ),
       );
 
-      final home = await objekts.screenshots(
-        name: 'home',
-        overwrite: true,
+      final results = await objekts.runScreenshotBatch(
+        (batch) async {
+          await batch.capture(name: 'home', overwrite: true);
+
+          await tester.tap(find.byKey(const Key('activity-tab')));
+          await tester.pump();
+          await batch.capture(name: 'activity', overwrite: true);
+          expect(find.text('Home screenshot captured'), findsOneWidget);
+
+          await tester.tap(find.byKey(const Key('settings-tab')));
+          await tester.pump();
+          await batch.capture(name: 'settings', overwrite: true);
+          expect(find.text('Include device frame'), findsOneWidget);
+
+          await tester.tap(find.byKey(const Key('overview-tab')));
+          await tester.pump();
+          await tester.tap(find.byKey(const Key('increment-button')));
+          await tester.pump();
+          await batch.capture(name: 'incremented', overwrite: true);
+          expect(find.text('Counter: 1'), findsOneWidget);
+        },
       );
+
+      final home = results.first;
       expect(home.logicalSize, config.surfaceSize);
       expect(
         home.pixelSize,
         config.surfaceSize * config.device.pixelRatio,
       );
-
-      await tester.tap(find.byKey(const Key('activity-tab')));
-      await tester.pump();
-      final activity = await objekts.screenshots(
-        name: 'activity',
-        overwrite: true,
-      );
+      final activity = results[1];
       expect(activity.logicalSize, config.surfaceSize);
-      expect(find.text('Home screenshot captured'), findsOneWidget);
-
-      await tester.tap(find.byKey(const Key('settings-tab')));
-      await tester.pump();
-      final settings = await objekts.screenshots(
-        name: 'settings',
-        overwrite: true,
-      );
+      final settings = results[2];
       expect(settings.logicalSize, config.surfaceSize);
-      expect(find.text('Include device frame'), findsOneWidget);
-
-      await tester.tap(find.byKey(const Key('overview-tab')));
-      await tester.pump();
-      await tester.tap(find.byKey(const Key('increment-button')));
-      await tester.pump();
-      await objekts.screenshots(name: 'incremented', overwrite: true);
-
-      expect(find.text('Counter: 1'), findsOneWidget);
+      expect(results[3].logicalSize, config.surfaceSize);
     },
     captureOnFailure: true,
   );

@@ -7,6 +7,7 @@ import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart'
 import 'capture.dart';
 import 'context.dart';
 import 'models.dart';
+import 'paths.dart';
 
 /// A callback used by [testWidgetsForDevices].
 typedef ObjektsDeviceWidgetTesterCallback = Future<void> Function(
@@ -118,6 +119,7 @@ void _registerTest({
   required bool captureOnFailure,
   required String? outputDirectory,
 }) {
+  final _CaptureTestVariant captureVariant = _CaptureTestVariant(variant);
   flutter_test.testWidgets(
     description,
     (tester) async {
@@ -127,6 +129,7 @@ void _registerTest({
         description: artifactDescription,
         deviceConfig: deviceConfig,
         deviceLabel: deviceLabel,
+        variantLabel: captureVariant.currentArtifactLabel,
         outputDirectory: outputDirectory,
       );
 
@@ -158,9 +161,53 @@ void _registerTest({
     skip: skip,
     timeout: timeout,
     semanticsEnabled: semanticsEnabled,
-    variant: variant,
+    variant: captureVariant,
     tags: tags,
     retry: retry,
     experimentalLeakTesting: experimentalLeakTesting,
   );
+}
+
+class _CaptureTestVariant extends flutter_test.TestVariant<Object?> {
+  _CaptureTestVariant(this.delegate) {
+    final Map<String, int> occurrences = <String, int>{};
+    for (final Object? value in delegate.values) {
+      final String description = delegate.describeValue(value);
+      if (description.isEmpty) {
+        _artifactLabels[value] = null;
+        continue;
+      }
+      final String baseLabel =
+          sanitizePathSegment(description, fallback: 'variant');
+      final int occurrence = (occurrences[baseLabel] ?? 0) + 1;
+      occurrences[baseLabel] = occurrence;
+      _artifactLabels[value] =
+          occurrence == 1 ? baseLabel : '$baseLabel-$occurrence';
+    }
+  }
+
+  final flutter_test.TestVariant<Object?> delegate;
+  final Map<Object?, String?> _artifactLabels = <Object?, String?>{};
+  String? currentArtifactLabel;
+
+  @override
+  Iterable<Object?> get values => delegate.values;
+
+  @override
+  String describeValue(Object? value) => delegate.describeValue(value);
+
+  @override
+  Future<Object?> setUp(Object? value) async {
+    currentArtifactLabel = _artifactLabels[value];
+    return delegate.setUp(value);
+  }
+
+  @override
+  Future<void> tearDown(Object? value, Object? memento) async {
+    try {
+      await delegate.tearDown(value, memento);
+    } finally {
+      currentArtifactLabel = null;
+    }
+  }
 }
