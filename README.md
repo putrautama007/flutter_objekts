@@ -19,6 +19,25 @@ dev_dependencies:
       ref: v0.1.2
 ```
 
+## AI agent screenshot skill
+
+Use the [screenshot skill](skills/flutter-objekts-screenshots/SKILL.md) to help
+your AI agent set up screenshots while keeping ordinary tests fast.
+
+From your Flutter app's directory, run this command and select your agent
+(requires Node.js 22.20+, npm, and Git):
+
+```bash
+npx skills add putrautama007/flutter_objekts --skill flutter-objekts-screenshots
+```
+
+Then ask your agent:
+
+```text
+Use flutter-objekts-screenshots to set up screenshots for this app while
+keeping ordinary unit and widget tests fast.
+```
+
 ## Capture a screenshot
 
 ```dart
@@ -302,6 +321,7 @@ description is used as the stable test directory.
 ## Development
 
 ```bash
+python3 -m unittest discover -s tool -p 'test_*.py'
 flutter pub get
 dart format --output=none --set-exit-if-changed .
 flutter analyze

@@ -1,0 +1,36 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:objekts/objekts.dart' as objekts;
+
+import 'support/preview_fixture.dart';
+
+void main() {
+  objekts.testWidgets(
+    'reviews the collection screen',
+    (tester) async {
+      await tester.pumpWidget(objekts.deviceFrame(
+        config: previewDevice,
+        child: const PreviewFixture(),
+      ));
+      expect(find.text('Saved items: 0'), findsOneWidget);
+
+      final result = await objekts.screenshots(
+        name: 'collection',
+        pixelRatio: 1,
+        overwrite: true,
+      );
+
+      expect(result.logicalSize, previewDevice.surfaceSize);
+      expect(result.pixelRatio, 1);
+      expect(result.pixelSize.width,
+          previewDevice.surfaceSize.width.ceilToDouble());
+      expect(result.pixelSize.height,
+          previewDevice.surfaceSize.height.ceilToDouble());
+      expect(File(result.path).existsSync(), isTrue);
+      // The single-capture file is ready when screenshots() completes.
+      print(result.path);
+    },
+    deviceConfig: previewDevice,
+  );
+}

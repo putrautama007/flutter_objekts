@@ -1,0 +1,52 @@
+import 'dart:io';
+
+import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:objekts/objekts.dart' as objekts;
+
+import 'support/preview_fixture.dart';
+
+void main() {
+  objekts.testWidgets(
+    'reviews saving an item',
+    (tester) async {
+      await tester.pumpWidget(objekts.deviceFrame(
+        config: previewDevice,
+        child: const PreviewFixture(),
+      ));
+
+      final results = await objekts.runScreenshotBatch(
+        (batch) async {
+          expect(find.text('Saved items: 0'), findsOneWidget);
+          await batch.capture(name: 'before-save', overwrite: true);
+
+          // Each capture must freeze its frame before the next UI mutation.
+          await tester.tap(find.byKey(const Key('save-item')));
+          await tester.pump();
+          // Advance this fixture's finite button feedback animation.
+          await tester.pump(const Duration(seconds: 1));
+          expect(find.text('Saved items: 1'), findsOneWidget);
+          await batch.capture(name: 'after-save', overwrite: true);
+        },
+        pixelRatio: 1,
+        maxPendingCaptures: 2,
+      );
+
+      // All output is ready, in capture order, after the batch completes.
+      expect(results, hasLength(2));
+      expect(File(results[0].path).uri.pathSegments.last, 'before-save.png');
+      expect(File(results[1].path).uri.pathSegments.last, 'after-save.png');
+      for (final result in results) {
+        expect(result.logicalSize, previewDevice.surfaceSize);
+        expect(result.pixelRatio, 1);
+        expect(result.pixelSize.width,
+            previewDevice.surfaceSize.width.ceilToDouble());
+        expect(result.pixelSize.height,
+            previewDevice.surfaceSize.height.ceilToDouble());
+        expect(File(result.path).existsSync(), isTrue);
+        print(result.path);
+      }
+    },
+    deviceConfig: previewDevice,
+  );
+}

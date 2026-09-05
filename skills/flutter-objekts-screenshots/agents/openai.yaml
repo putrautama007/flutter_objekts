@@ -1,0 +1,4 @@
+interface:
+  display_name: "Flutter Objekts Screenshots"
+  short_description: "Fast, separate Flutter screenshot test workflows"
+  default_prompt: "Use $flutter-objekts-screenshots to set up or optimize this app's screenshot workflow while keeping ordinary unit and widget tests fast."
